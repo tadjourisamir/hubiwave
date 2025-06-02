@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>🟡 Pending Machines (pending_hosts.json)</h2>
+
+  {% if pending_hosts %}
+  <table class="hosts-table">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>User</th>
+        <th>Port</th>
+        <th>ID (MAC)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for host in pending_hosts %}
+      <tr>
+        <td>{{ host.ip }}</td>
+        <td>{{ host.user }}</td>
+        <td>{{ host.port }}</td>
+        <td><code>{{ host.id }}</code></td>
+        <td>
+          <form method="POST" action="/validate_host" style="display:inline;">
+            <input type="hidden" name="id" value="{{ host.id }}">
+            <button type="submit" title="Validate and move to hosts.json">✅ Validate</button>
+          </form>
+          <form method="POST" action="/delete_host" style="display:inline;" onsubmit="return confirm('Delete this machine?')">
+            <input type="hidden" name="id" value="{{ host.id }}">
+            <button type="submit" title="Permanently delete">🗑 Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No pending machines found.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>➕ Manually Add a Machine to the Pending List</h3>
+  <form id="pending-form">
+    <input type="text" id="ip" placeholder="IP address" required>
+    <input type="text" id="user" placeholder="Username" required>
+    <input type="number" id="port" placeholder="SSH port (default 22)">
+    <button type="submit">Add</button>
+  </form>
+  <p id="pending-status" style="margin-top: 1rem; font-weight: bold;"></p>
+</section>
+
+<section class="card">
+  <h3>📘 What is a Pending Machine?</h3>
+  <p>Machines appear here when detected but not yet validated. Once validated, they are moved into <code>hosts.json</code> and become available for task scheduling.</p>
+  <p>This allows you to review and approve machines before allowing them to execute tasks.</p>
+</section>
+
+<section class="card">
+  <h3>📡 Automatic Detection Log</h3>
+  <div id="auto-log" style="font-family: monospace; background: #f9f9f9; padding: 1rem; border: 1px solid #ccc; max-height: 250px; overflow-y: auto;"></div>
+</section>
+
+<script>
+document.getElementById("pending-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const ip = document.getElementById("ip").value;
+  const user = document.getElementById("user").value;
+  const port = parseInt(document.getElementById("port").value || "22");
+
+  const payload = { ip, user, port };
+  appendLog(`📤 Sending ${ip}:${port} for user ${user}`);
+
+  try {
+    const res = await fetch("/add_pending", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+
+    if (json.status === "added") {
+      document.getElementById("pending-status").textContent = `✅ Machine ${json.ip} added.`;
+      appendLog(`[✔] ${json.ip} added to pending_hosts.json`);
+      document.getElementById("pending-form").reset();
+      setTimeout(() => location.reload(), 1000);
+    }
+    else if (json.status === "exists") {
+      document.getElementById("pending-status").textContent = `⚠️ Already known (MAC: ${json.mac})`;
+      appendLog(`[⚠] Machine already present: ${json.mac}`);
+    }
+    else {
+      document.getElementById("pending-status").textContent = `❌ Error: ${json.error}`;
+      appendLog(`[❌] Error: ${json.error}`);
+    }
+  } catch (err) {
+    document.getElementById("pending-status").textContent = `❌ AJAX failed: ${err.message}`;
+    appendLog(`[❌] AJAX failed: ${err.message}`);
+  }
+});
+
+function appendLog(msg) {
+  const logBox = document.getElementById("auto-log");
+  const line = document.createElement("div");
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logBox.appendChild(line);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+</script>
+
+{% endblock %}

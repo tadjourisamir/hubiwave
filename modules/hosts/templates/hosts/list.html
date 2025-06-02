@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>🧾 SSH Hosts Configuration</h2>
+
+  {% if hosts %}
+  <table class="hosts-table">
+    <thead>
+      <tr>
+        <th>IP Address</th>
+        <th>User</th>
+        <th>Port</th>
+        <th>Status</th>
+        <th>ID (MAC)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for host in hosts %}
+      <tr data-ip="{{ host.ip }}">
+        <td>{{ host.ip }}</td>
+        <td>{{ host.user }}</td>
+        <td>{{ host.port }}</td>
+        <td class="status-cell">
+          {% if host.connected %}
+            🟢 Connected
+          {% else %}
+            🔴 Offline
+          {% endif %}
+        </td>
+        <td><code>{{ host.id if host.id else '❌ (missing)' }}</code></td>
+        <td>
+          <form method="POST" action="/delete_host" onsubmit="return confirm('Confirm deletion?')">
+            <input type="hidden" name="id" value="{{ host.id }}">
+            <button type="submit">🗑 Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No hosts found. Please add entries to <code>hosts.json</code>.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>📘 About Machines</h3>
+  <p>Each configured SSH host here represents a remote machine that can execute scheduled scripts. Make sure each host is reachable and has a unique MAC address for tracking.</p>
+</section>
+
+<section class="card">
+  <h3>🛠️ Usage Tips</h3>
+  <ul class="info-list">
+    <li>Add or edit hosts in <code>hosts.json</code></li>
+    <li>Verify connection status (green or red icon)</li>
+    <li>MAC addresses must match to allow execution</li>
+  </ul>
+</section>
+
+<script>
+setInterval(() => {
+  fetch("/settings_data")
+    .then(res => res.json())
+    .then(data => {
+      for (const host of data) {
+        const row = document.querySelector(`tr[data-ip='${host.ip}']`);
+        if (row) {
+          const statusCell = row.querySelector(".status-cell");
+          statusCell.textContent = host.connected ? "🟢 Connected" : "🔴 Offline";
+        }
+      }
+    });
+}, 5000);
+</script>
+
+{% endblock %}

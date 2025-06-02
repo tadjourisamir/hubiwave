@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar | HubiWave{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css">
+{% endblock %}
+
+{% block content %}
+<h2>📅 Scheduled Events Calendar</h2>
+<div id="calendar"></div>
+
+<div id="popupOverlay" onclick="closePopup()"></div>
+<div id="customPopup">
+  <div id="popupContent"></div>
+  <button onclick="closePopup()">Close</button>
+</div>
+
+<style>
+  #calendar {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  #customPopup {
+    display: none;
+    position: fixed;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    max-width: 600px;
+    width: 90%;
+    overflow-y: auto;
+    max-height: 80vh;
+  }
+  #popupOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+  }
+  #customPopup button {
+    margin-top: 15px;
+    padding: 6px 12px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+<script src="https://unpkg.com/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
+
+<script>
+  function closePopup() {
+    document.getElementById('customPopup').style.display = 'none';
+    document.getElementById('popupOverlay').style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridWeek',
+      initialDate: '2025-05-28',
+      locale: 'en',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+
+      events: function(fetchInfo, successCallback, failureCallback) {
+        fetch('/api/scheduled_events')
+          .then(res => res.json())
+          .then(data => {
+            const events = data.map(task => ({
+              id: task.id,
+              title: task.title || task.name || 'Event',
+              start: task.start,
+              end: task.end,
+              extendedProps: task.extendedProps
+            }));
+            successCallback(events);
+          })
+          .catch(err => {
+            console.error("❌ Failed to load events:", err);
+            failureCallback(err);
+          });
+      },
+
+      eventDidMount: function(info) {
+        const e = info.event;
+        const tooltip = `
+          <strong>${e.title}</strong><br>
+          ${new Date(e.start).toLocaleString()} → ${new Date(e.end).toLocaleString()}<br>
+          ${e.extendedProps.description || ''}
+        `;
+        tippy(info.el, {
+          content: tooltip,
+          allowHTML: true,
+          theme: 'light',
+          placement: 'top',
+          delay: [100, 0]
+        });
+      },
+
+      eventClick: function(info) {
+        const e = info.event;
+        const p = e.extendedProps;
+        const plan = Array.isArray(p.execution_plan) ? p.execution_plan : [];
+
+        let html = `<h3>${e.title}</h3>`;
+        html += `<p><strong>Description:</strong> ${p.description || '-'}</p>`;
+        html += `<p><strong>Time:</strong> ${new Date(e.start).toLocaleString()} → ${new Date(e.end).toLocaleString()}</p>`;
+        html += `<p><strong>Mode:</strong> ${p.execution_mode || '-'} | Cycles: ${p.total_cycles ?? '-'} | Exec/cycle: ${p.executions_per_cycle ?? '-'}</p>`;
+        html += `<p><strong>Estimated Duration:</strong> ${p.total_duration ?? '-'} sec (Timeout: ${p.timeout ?? '-'}s)</p>`;
+        html += `<p><strong>Command:</strong><br><code>${p.command || '-'}</code></p>`;
+        html += `<p><strong>File:</strong> ${p.filename || '-'}</p>`;
+        html += `<p><strong>Detach:</strong> ${p.detach ? 'Yes' : 'No'}</p>`;
+        html += `<p><strong>Type:</strong> ${p.type || '-'}</p>`;
+
+        html += `<p><strong>Machines:</strong><br>`;
+        if (p.machines?.length) {
+          html += p.machines.map(ip => `${ip} (${p.macs?.[ip] || 'Unknown MAC'})`).join('<br>');
+        } else {
+          html += `None`;
+        }
+        html += `</p>`;
+
+        html += `<strong>📋 Execution Plan:</strong><br>`;
+        if (plan.length) {
+          html += '<ul>';
+          plan.forEach(exec => {
+            html += `<li>${exec.cycle_label} / ${exec.execution_label} → ${new Date(exec.time).toLocaleTimeString()} (${exec.ip})</li>`;
+          });
+          html += '</ul>';
+        } else {
+          html += `<i>No execution plan defined</i>`;
+        }
+
+        document.getElementById('popupContent').innerHTML = html;
+        document.getElementById('customPopup').style.display = 'block';
+        document.getElementById('popupOverlay').style.display = 'block';
+      }
+    });
+
+    calendar.render();
+  });
+</script>
+{% endblock %}

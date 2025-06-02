@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="script-list-section">
+  <h2>📜 Available Scripts</h2>
+  <p>Select a script to execute on the chosen machines. You can also upload a new one.</p>
+
+  {% if scripts %}
+    <ul class="script-list">
+      {% for script in scripts %}
+        <li class="script-card" data-filename="{{ script.filename }}">
+          <div class="script-info">
+            <div class="script-header">
+              <code>{{ script.filename }}</code>
+              {% if script.description %}
+                <small> – {{ script.description }}</small>
+              {% endif %}
+            </div>
+            <div class="script-meta">
+              📅 Last modified: {{ script.modified }}
+            </div>
+          </div>
+
+          <form action="{{ url_for('scripts.run_script', filename=script.filename) }}" method="post" class="script-form" novalidate>
+            <div class="form-group">
+              <strong>🎯 Target Machines:</strong><br>
+              {% for host in hosts %}
+                <label class="host-checkbox">
+                  <input type="checkbox" name="target_ips" value="{{ host.ip }}"> {{ host.ip }}
+                </label>
+              {% endfor %}
+            </div>
+
+            <div class="button-group">
+              <button class="cta-button" type="submit">▶️ Run</button>
+              <button type="button" class="danger-button delete-btn" data-filename="{{ script.filename }}">🗑️ Delete</button>
+            </div>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No scripts available at the moment.</p>
+    <div style="margin-top: 2rem;">
+      <h4>📘 How to add a script?</h4>
+      <ul>
+        <li>🔼 Use the form below to upload a script file (.sh or .py).</li>
+        <li>🖥️ It will appear above once saved, ready to be executed on your selected machines.</li>
+        <li>🛡️ Only trusted scripts should be uploaded, as they will be executed remotely.</li>
+      </ul>
+      <p>
+        Example script:<br>
+        <pre><code>#!/bin/bash
+mpv --fs --speed=0.5 ~/Videos/sample.mp4</code></pre>
+      </p>
+    </div>
+  {% endif %}
+
+  <hr style="margin: 2rem 0;">
+
+  <h3>📤 Upload a New Script</h3>
+  <form action="{{ url_for('scripts.upload_script') }}" method="post" enctype="multipart/form-data" class="upload-form">
+    <input type="file" name="script_file" accept=".sh,.py" required>
+    <button type="submit" class="cta-button">Upload</button>
+  </form>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="filler"></div>
+  <div id="toast" class="toast"></div>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const deleteButtons = document.querySelectorAll(".delete-btn");
+
+  deleteButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const filename = button.dataset.filename;
+      if (!confirm(`❗ Delete the script "${filename}"?`)) return;
+
+      fetch(`/scripts/delete/${filename}`, {
+        method: "POST"
+      })
+      .then(response => {
+        if (response.ok) {
+          document.querySelector(`li[data-filename="${filename}"]`).remove();
+          showToast(`🗑️ Script "${filename}" deleted`);
+        } else {
+          alert("❌ Error while deleting.");
+        }
+      })
+      .catch(() => alert("❌ Network error."));
+    });
+  });
+
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.style.display = "block";
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 3000);
+  }
+});
+</script>
+{% endblock %}

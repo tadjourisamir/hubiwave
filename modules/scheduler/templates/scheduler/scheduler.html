@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+{% endblock %}
+
+{% block content %}
+<section class="scheduler-section">
+  <h2>🕒 Schedule a Remote Task</h2>
+
+  <form method="POST" action="{{ url_for('scheduler.scheduler') }}" class="scheduler-form" id="scheduler-form">
+    {% if edit_task %}
+      <input type="hidden" name="edit_id" value="{{ edit_task.id }}">
+    {% endif %}
+
+    <!-- 1. General Information -->
+    <div class="form-section">
+      <h3>💼 General Information</h3>
+      <label>Task Name:</label>
+      <input type="text" name="name" required value="{{ edit_task.name if edit_task else '' }}">
+
+      <label>Description:</label>
+      <textarea name="description">{{ edit_task.description if edit_task else '' }}</textarea>
+    </div>
+
+    <!-- 2. Time Window -->
+    <div class="form-section">
+      <h3>🗓 Time Window</h3>
+      <label>Start:</label>
+      <input type="text" name="start_datetime" id="start_datetime" required value="{{ edit_task.start_datetime if edit_task else '' }}">
+
+      <div class="block-end-cycle" id="block_end_datetime" style="display: {{ 'block' if edit_task and edit_task.total_cycles == 1 else 'none' }};">
+        <label for="end_datetime">End of cycle (if 1 cycle):</label>
+        <input type="text" name="end_datetime" id="end_datetime" value="{{ edit_task.end_datetime if edit_task else '' }}">
+      </div>
+
+      <input type="hidden" name="end_event_datetime" id="end_event_datetime">
+      <p><strong>🗓 Estimated Global End:</strong> <span id="calculated_end_event_display">—</span></p>
+      <p><strong>🗭 Total Scheduling Duration:</strong> <span id="planning_total_display">—</span> sec</p>
+    </div>
+
+    <!-- 3. Repetition -->
+    <div class="form-section">
+      <h3>🔁 Repetition</h3>
+      <label>Total number of cycles:</label>
+      <input type="number" name="total_cycles" id="total_cycles" min="1" required value="{{ edit_task.total_cycles if edit_task else 1 }}">
+
+      <label>Interval between cycles:</label>
+      <div style="display:flex; gap:10px;">
+        <input type="number" name="cycle_every" id="cycle_every" class="cycle-interval" min="3" value="{{ edit_task.cycle_every if edit_task else 5 }}" style="width:80px;">
+        <select name="cycle_unit" id="cycle_unit">
+          <option value="seconds" {% if edit_task.cycle_unit == 'seconds' %}selected{% endif %}>seconds</option>
+          <option value="minutes" {% if edit_task.cycle_unit == 'minutes' %}selected{% endif %}>minutes</option>
+          <option value="hours" {% if edit_task.cycle_unit == 'hours' %}selected{% endif %}>hours</option>
+          <option value="days" {% if edit_task.cycle_unit == 'days' %}selected{% endif %}>days</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 4. Cycle Execution -->
+    <div class="form-section">
+      <h3>⚙️ Cycle Execution</h3>
+
+      <label>Execution Mode:</label>
+      <select name="execution_mode" id="execution_mode">
+        <option value="sequential" {% if not edit_task or edit_task.execution_mode == 'sequential' %}selected{% endif %}>Sequential</option>
+        <option value="parallel" {% if edit_task and edit_task.execution_mode == 'parallel' %}selected{% endif %}>Parallel</option>
+      </select>
+
+      <label>Executions per cycle:</label>
+      <input type="number" name="executions_per_cycle" id="executions_per_cycle" min="1" value="{{ edit_task.executions_per_cycle if edit_task else 1 }}">
+
+      <label>Spacing between executions (in seconds):</label>
+      <input type="number" name="execution_spacing" id="execution_spacing" class="execution-spacing" min="3" value="{{ edit_task.execution_spacing if edit_task else 5 }}">
+    </div>
+
+    <!-- 5. Calculated Timeout -->
+    <div class="form-section">
+      <h3>⏱ Timeout (automatically calculated)</h3>
+      <p><strong>⏱ Applied Timeout:</strong> <span id="timeout_display">—</span> sec</p>
+      <p><strong>🔀 Cycle Duration:</strong> <span id="cycle_duration_val">—</span> sec</p>
+      <input type="hidden" name="duration" id="timeout_value" value="{{ edit_task.duration if edit_task else 5 }}">
+      <div id="timeout_warning" style="color: #a00; font-weight: bold; display: none;"></div>
+    </div>
+
+    <!-- 6. Task to Execute -->
+    <div class="form-section">
+      <h3>🧐 Task to Execute</h3>
+      <label><input type="radio" name="type" value="command" {% if not edit_task or edit_task.type == 'command' %}checked{% endif %}> Command</label>
+      <label><input type="radio" name="type" value="script" {% if edit_task and edit_task.type == 'script' %}checked{% endif %}> Script</label>
+
+      <div id="command-block">
+        <label>Command:</label>
+        <input type="text" name="command_text" value="{{ edit_task.command if edit_task else '' }}">
+      </div>
+
+      <div id="script-block">
+        <label>Script:</label>
+        <select name="script_name">
+          {% for script in scripts %}
+            <option value="{{ script }}" {% if edit_task and edit_task.filename == script %}selected{% endif %}>{{ script }}</option>
+          {% endfor %}
+        </select>
+
+        <label>Remote Name:</label>
+        <input type="text" name="remote_name" value="{{ edit_task.remote_name if edit_task else '' }}">
+      </div>
+    </div>
+
+    <!-- 7. Targets -->
+    <div class="form-section">
+      <h3>🎯 Target Machines</h3>
+      {% for host in hosts %}
+        <label>
+          <input type="checkbox" name="target_ips" value="{{ host.ip }}" {% if edit_task and host.ip in edit_task.machines %}checked{% endif %}>
+          {{ host.ip }} ({{ host.user }})
+        </label>
+        <input type="hidden" name="mac_for_{{ host.ip }}" value="{{ host.id }}">
+        <br>
+      {% endfor %}
+    </div>
+
+    <!-- 8. Options -->
+    <div class="form-section" id="detach-section">
+      <label>
+        <input type="checkbox" name="detach" id="detach_checkbox"
+              {% if edit_task and edit_task.detach and edit_task.type == 'command' %}checked{% endif %}>
+        🚀 Detached (background)
+      </label>
+    </div>
+
+
+    <!-- 9. Dynamic Display -->
+    <p id="cycle_duration_display" style="font-weight: bold;"></p>
+    <div id="cycle_warning"></div>
+    <div id="validation_ok" style="color: green; font-weight: bold; display: none;">✅ Valid configuration.</div>
+    <label>
+      <!-- 10. Submission -->
+      <input type="checkbox" name="active_checkbox" {% if edit_task and edit_task.active %}checked{% endif %}>
+      Activate this task
+    </label>
+    <button type="submit" class="cta-button">🗓 {% if edit_task %}Save{% else %}Schedule{% endif %}</button>
+  </form>
+
+  <style>
+.scheduler-section {
+  max-width: 1000px;
+  margin: auto;
+  padding: 30px 40px;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #fdfdfd;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.form-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-left: 5px solid #007bff;
+  border-radius: 6px;
+}
+
+.form-section h3 {
+  margin-bottom: 16px;
+  color: #007bff;
+  font-size: 1.3rem;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+textarea {
+  resize: vertical;
+}
+
+label {
+  font-weight: 600;
+  margin-top: 12px;
+  display: block;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  margin-right: 6px;
+  transform: scale(1.1);
+  vertical-align: middle;
+}
+
+.cta-button {
+  background-color: #007bff;
+  color: white;
+  font-weight: bold;
+  padding: 12px 24px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.cta-button:hover {
+  background-color: #0056b3;
+}
+
+#cycle_warning {
+  background-color: #f8d7da;
+  color: #842029;
+  border: 1px solid #f5c2c7;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  display: none;
+}
+
+#validation_ok {
+  background-color: #d1e7dd;
+  color: #0f5132;
+  border: 1px solid #badbcc;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+#timeout_display,
+#cycle_duration_val {
+  font-weight: bold;
+  color: #333;
+}
+
+.block-end-cycle {
+  transition: all 0.3s ease;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const startInput = document.getElementById("start_datetime");
+  const endInput = document.getElementById("end_datetime");
+  const endGlobalInput = document.getElementById("end_event_datetime");
+  const endGlobalDisplay = document.getElementById("calculated_end_event_display");
+
+  const executionsPerCycleInput = document.getElementById("executions_per_cycle");
+  const executionSpacingInput = document.getElementById("execution_spacing");
+  const cycleEveryInput = document.getElementById("cycle_every");
+  const cycleUnitSelect = document.getElementById("cycle_unit");
+  const totalCyclesInput = document.getElementById("total_cycles");
+  const executionModeSelect = document.getElementById("execution_mode");
+
+  const durationInput = document.getElementById("timeout_value");
+  const timeoutDisplay = document.getElementById("timeout_display");
+  const cycleDurationVal = document.getElementById("cycle_duration_val");
+  const planningTotalDisplay = document.getElementById("planning_total_display");
+
+  const cycleWarningDiv = document.getElementById("cycle_warning");
+  const validationOK = document.getElementById("validation_ok");
+  const submitButton = document.querySelector("button[type='submit']");
+
+  const commandBlock = document.getElementById("command-block");
+  const scriptBlock = document.getElementById("script-block");
+  const radios = document.querySelectorAll("input[name='type']");
+  const endDatetimeBlock = document.getElementById("block_end_datetime");
+  const detachSection = document.getElementById("detach-section");
+
+  const MIN_TIMEOUT = 4;
+  const MIN_SPACING = 3;
+  const MIN_DELAY = 10;
+
+  const pad = n => String(n).padStart(2, '0');
+  const toISO = date =>
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+
+  function parseDatetime(value) {
+    if (!value) return null;
+    try {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  }
+
+  function convertToSeconds(value, unit) {
+    const units = { seconds: 1, minutes: 60, hours: 3600, days: 86400 };
+    return value * (units[unit] || 1);
+  }
+
+  function updateTypeVisibility() {
+    const selected = document.querySelector("input[name='type']:checked")?.value;
+    commandBlock.style.display = selected === "command" ? "block" : "none";
+    scriptBlock.style.display = selected === "script" ? "block" : "none";
+    detachSection.style.display = selected === "command" ? "block" : "none";
+  }
+
+  function updateFieldStates() {
+    const mode = executionModeSelect.value;
+    const totalCycles = parseInt(totalCyclesInput.value, 10) || 0;
+    const execs = parseInt(executionsPerCycleInput.value, 10) || 0;
+
+    endDatetimeBlock.style.display = "block";
+
+    const disableSpacing = mode === "parallel" || execs <= 1;
+    executionSpacingInput.disabled = disableSpacing;
+    executionSpacingInput.style.opacity = disableSpacing ? "0.6" : "1";
+
+    const disableCycle = totalCycles <= 1;
+    cycleEveryInput.disabled = disableCycle;
+    cycleUnitSelect.disabled = disableCycle;
+    cycleEveryInput.style.opacity = disableCycle ? "0.6" : "1";
+    cycleUnitSelect.style.opacity = disableCycle ? "0.6" : "1";
+  }
+
+  function validateForm() {
+    const start = parseDatetime(startInput.value);
+    const end = parseDatetime(endInput.value);
+    const execs = parseInt(executionsPerCycleInput.value, 10) || 0;
+    const spacing = parseInt(executionSpacingInput.value, 10) || 0;
+    const cycleEvery = parseInt(cycleEveryInput.value, 10) || 0;
+    const cycleUnit = cycleUnitSelect.value;
+    const totalCycles = parseInt(totalCyclesInput.value, 10) || 0;
+    const mode = executionModeSelect.value;
+
+    let errors = [];
+    let timeout = NaN;
+    let cycleDuration = NaN;
+    let planningDuration = NaN;
+    let endGlobal = null;
+
+    const now = new Date();
+
+    if (!start) {
+      errors.push("Please fill in the start date.");
+    } else if ((start.getTime() - now.getTime()) < MIN_DELAY * 1000) {
+      errors.push(`⏱ Start time must be at least ${MIN_DELAY} seconds in the future.`);
+    }
+
+    if (mode === "sequential" && execs > 1 && spacing < MIN_SPACING) {
+      errors.push("Spacing between executions must be at least 3 seconds.");
+    }
+
+    const cycleEverySec = convertToSeconds(cycleEvery, cycleUnit);
+    if (totalCycles > 1 && cycleEverySec < MIN_SPACING) {
+      errors.push("Interval between cycles must be at least 3 seconds.");
+    }
+
+    if (end && start && end <= start) {
+      errors.push("Cycle end time must be after the start time.");
+    }
+
+    if (totalCycles < 1) {
+      errors.push("Number of cycles must be at least 1.");
+    }
+
+    if (start && end && execs > 0) {
+      const rawDuration = (end - start) / 1000;
+      if (mode === "sequential") {
+        const totalSpacing = (execs - 1) * spacing;
+        const availableTime = rawDuration - totalSpacing;
+        timeout = availableTime / execs;
+        cycleDuration = timeout * execs + totalSpacing;
+
+        if (!Number.isFinite(timeout) || timeout <= 0) {
+          errors.push("⛔ Invalid calculated timeout. Please check your input.");
+        } else if (timeout < MIN_TIMEOUT) {
+          errors.push("⏱ Execution timeout is below the minimum of 4 seconds.");
+        }
+      } else {
+        timeout = rawDuration;
+        cycleDuration = rawDuration;
+      }
+    }
+
+    if (start && Number.isFinite(cycleDuration)) {
+      const spacingBetweenCycles = totalCycles > 1 ? (totalCycles - 1) * cycleEverySec : 0;
+      planningDuration = cycleDuration * totalCycles + spacingBetweenCycles;
+      endGlobal = new Date(start.getTime() + planningDuration * 1000);
+
+      if (endGlobalInput) endGlobalInput.value = toISO(endGlobal);
+      if (endGlobalDisplay) endGlobalDisplay.textContent = toISO(endGlobal);
+    }
+
+    timeoutDisplay.textContent = Number.isFinite(timeout) ? Math.ceil(timeout) : "—";
+    cycleDurationVal.textContent = Number.isFinite(cycleDuration) ? Math.ceil(cycleDuration) : "—";
+    planningTotalDisplay.textContent = Number.isFinite(planningDuration)
+      ? Math.ceil(planningDuration) + " sec" : "—";
+
+    durationInput.value = Number.isFinite(timeout) ? Math.ceil(timeout) : "";
+
+    if (errors.length > 0) {
+      cycleWarningDiv.style.display = "block";
+      cycleWarningDiv.innerHTML = errors.map(e => `<p>${e}</p>`).join("");
+      validationOK.style.display = "none";
+      submitButton.disabled = true;
+    } else {
+      cycleWarningDiv.style.display = "none";
+      validationOK.style.display = "block";
+      submitButton.disabled = false;
+    }
+  }
+
+  function setupFlatpickr(selector) {
+    const input = document.querySelector(selector);
+    if (!input) return;
+
+    flatpickr(input, {
+      enableTime: true,
+      enableSeconds: true,
+      time_24hr: true,
+      dateFormat: "Y-m-d\\TH:i:S",
+      altInput: true,
+      altFormat: "Y-m-d H:i:S",
+      allowInput: true,
+      minDate: new Date(Date.now() + 10000)
+    });
+  }
+
+  function createDateShortcutButtons(input) {
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.gap = "6px";
+    container.style.marginTop = "5px";
+    container.style.flexWrap = "wrap";
+
+    const options = [
+      { label: "➕1min", offset: 60 },
+      { label: "➕2min", offset: 120 },
+      { label: "➕5min", offset: 300 }
+    ];
+
+    options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = opt.label;
+      Object.assign(btn.style, {
+        padding: "4px 10px", fontSize: "0.85em", border: "1px solid #ccc",
+        borderRadius: "4px", cursor: "pointer", backgroundColor: "#f8f9fa"
+      });
+      btn.addEventListener("click", () => {
+        const now = new Date();
+        now.setSeconds(now.getSeconds() + opt.offset);
+        input._flatpickr.setDate(now, true);
+        updateFieldStates();
+        validateForm();
+      });
+      container.appendChild(btn);
+    });
+
+    input.parentNode.insertBefore(container, input.nextSibling);
+  }
+
+  // Init
+  setupFlatpickr("#start_datetime");
+  setupFlatpickr("#end_datetime");
+  createDateShortcutButtons(startInput);
+  createDateShortcutButtons(endInput);
+
+  executionsPerCycleInput.addEventListener("change", validateForm);
+  executionSpacingInput.addEventListener("change", validateForm);
+
+  radios.forEach(r => r.addEventListener("change", () => {
+    updateTypeVisibility();
+    updateFieldStates();
+    validateForm();
+  }));
+
+  [
+    startInput, endInput, executionsPerCycleInput, executionSpacingInput,
+    cycleEveryInput, cycleUnitSelect, totalCyclesInput, executionModeSelect
+  ].forEach(el => el.addEventListener("input", () => {
+    updateFieldStates();
+    validateForm();
+  }));
+
+  updateTypeVisibility();
+  updateFieldStates();
+  validateForm();
+});
+</script>
+
+
+
+</section>
+{% endblock %}

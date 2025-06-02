@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="hero">
+  <img src="{{ url_for('static', filename='image.png') }}" alt="HubiWave SSH Illustration" class="hero-img">
+  
+  <h2 class="main-title">
+    🌊 Welcome to <strong>HubiWave</strong>
+    <span class="version">v{{ app_version }}</span>
+  </h2>
+  <p class="tagline">
+    A sleek local web interface to manage scripts, SSH commands, and scheduled jobs across your Linux machines.
+  </p>
+</section>
+
+<section class="card">
+  <h3>🌐 What is HubiWave?</h3>
+  <p>
+    <strong>HubiWave</strong> is a modular, self-hosted orchestration dashboard for local networks. Whether you're a dev, sysadmin, or automation enthusiast,
+    HubiWave lets you control, plan, and execute actions across multiple Linux hosts — all from your browser.
+  </p>
+</section>
+
+<section class="card">
+  <h3>⚙️ Core Features</h3>
+  <ul class="info-list">
+    <li>🚀 <strong>Instant SSH commands</strong> on one or multiple machines (parallel or sequential mode).</li>
+    <li>📜 <strong>Script upload and execution</strong> (.sh, .py), with target selection and detachment options.</li>
+    <li>📅 <strong>Advanced scheduler</strong> supporting cycles, delays, spacing, and execution plans.</li>
+    <li>🧠 <strong>Persistent task storage</strong> with no database — 100% local, JSON-based.</li>
+    <li>📊 <strong>Interactive calendar view</strong> for all scheduled jobs with tooltips and details.</li>
+    <li>🔎 <strong>Execution logs</strong> and real-time feedback for script runs.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h3>🧱 Architecture Overview</h3>
+  <ul class="info-list">
+    <li><strong>Blueprints</strong> organize features (commands, scripts, scheduler, etc.).</li>
+    <li><strong>Modules</strong> are isolated and self-contained (routes, templates, static, logic).</li>
+    <li><strong>Core services</strong> manage tasks, execution, metadata, and host communication.</li>
+    <li><strong>Flat file storage</strong> ensures everything is transparent and portable (JSON only).</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h3>🔐 Designed for Privacy</h3>
+  <ul class="info-list">
+    <li>🛡️ <strong>Local-only</strong>: Nothing is ever sent to the cloud.</li>
+    <li>🔑 <strong>SSH-native</strong>: No secrets are stored; your keys stay where they belong.</li>
+    <li>📁 <strong>No DB</strong>: All config and data are human-readable flat files.</li>
+    <li>🐧 <strong>Linux-first</strong>: Works on Linux, WSL, macOS, or any UNIX with Python 3.8+.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h3>🚀 Get Started in 3 Steps</h3>
+  <ol class="info-list">
+    <li>👥 Configure your hosts in <code>hosts.json</code> (or approve new ones via the Pending tab).</li>
+    <li>🖥️ Send immediate <strong>Commands</strong> or run uploaded <strong>Scripts</strong>.</li>
+    <li>⏱️ Need automation? Use the <strong>Scheduler</strong> to define recurring or timed tasks.</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h3>📦 Project Goals</h3>
+  <p>
+    HubiWave aims to be <strong>simple, auditable, offline-first</strong>, and easy to extend. Whether you're managing 2 machines or 200,
+    it's your lightweight alternative to heavy remote management platforms.
+  </p>
+</section>
+
+{% endblock %}

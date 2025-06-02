@@ -1,0 +1,36 @@
+# 🐍 Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# 🔧 Environnement virtuel
+venv/
+.env/
+.envrc
+
+# 📝 Logs
+*.log
+logs/
+data/*.json
+
+# 📦 OS-specific
+.DS_Store
+Thumbs.db
+
+# 🧪 Tests ou fichiers temporaires
+*.bak
+*.swp
+*.tmp
+*.old
+
+# 🚀 PyInstaller output
+dist/
+build/
+*.spec
+
+# 📚 IDEs
+.vscode/
+.idea/
+*.code-workspace

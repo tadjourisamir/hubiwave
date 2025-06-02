@@ -1,0 +1,201 @@
+/* --------- Base --------- */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background-color: #f4f6f8;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* --------- Navbar --------- */
+.navbar {
+  background-color: #0a1d3d;
+  color: white;
+  padding: 1rem 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1.5rem;
+  flex-wrap: wrap;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 36px;
+  margin-right: 0.6rem;
+}
+
+.brand-name {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: white;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.nav-links a {
+  margin-left: 1rem;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.nav-links a:hover {
+  background-color: #143c80;
+}
+
+/* --------- Hero Section --------- */
+.hero {
+  background-color: white;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+
+.hero-img {
+  max-width: 600px;
+  margin: 1.5rem auto;
+  display: block;
+}
+
+
+.main-title {
+  font-size: 2.3rem;
+  color: #0a1d3d;
+  margin-bottom: 0.5rem;
+}
+
+.version {
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.tagline {
+  font-size: 1.1rem;
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+}
+
+.cta-button {
+  background-color: #0a1d3d;
+  color: white;
+  padding: 0.75rem 1.4rem;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+  display: inline-block;
+}
+
+.cta-button:hover {
+  background-color: #143c80;
+}
+
+/* --------- Cards --------- */
+.card {
+  background-color: white;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  max-width: 900px;
+}
+
+.card h3 {
+  color: #0a1d3d;
+  margin-bottom: 1rem;
+}
+
+.info-list {
+  list-style: none;
+  padding-left: 1rem;
+}
+
+.info-list li::before {
+  content: "• ";
+  color: #0a1d3d;
+  font-weight: bold;
+}
+
+/* --------- Flash Messages --------- */
+.flash-messages {
+  margin-bottom: 1.5rem;
+}
+
+.flash {
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* --------- Footer --------- */
+.footer {
+  text-align: center;
+  padding: 1.5rem;
+  background-color: #0a1d3d;
+  color: white;
+  font-size: 0.9rem;
+  margin-top: 3rem;
+}
+
+/* --------- Responsive --------- */
+@media (max-width: 768px) {
+  .navbar-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .nav-links a {
+    margin: 0.4rem 0;
+  }
+
+  .logo-img {
+    height: 30px;
+  }
+
+  .main-title {
+    font-size: 1.7rem;
+  }
+
+  .hero-img {
+    max-width: 90%;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+}

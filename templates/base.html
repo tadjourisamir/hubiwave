@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}HubiWave{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  {% block head %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="layout">
+
+<header class="navbar">
+  <div class="container navbar-inner">
+    <div class="navbar-brand">
+      <a href="{{ url_for('index') }}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="HubiWave Logo" class="logo-img">
+        <span class="brand-name">HubiWave</span>
+      </a>
+    </div>
+    <nav class="nav-links">
+      <a href="{{ url_for('scheduler.scheduler') }}">📅 Schedule</a>
+      <a href="{{ url_for('calendar.calendar_view') }}">🗓️ Calendar</a>
+      <a href="{{ url_for('scripts.list_scripts') }}">📜 Scripts</a>
+      <a href="{{ url_for('hosts.list_hosts') }}">⚙️ Machines</a>
+      <a href="{{ url_for('hosts.pending_hosts') }}">🕓 Pending</a>
+    </nav>
+  </div>
+</header>
+
+<main class="main-content container">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <p>&copy; 2025 HubiWave — All rights reserved.</p>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
