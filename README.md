@@ -1,6 +1,10 @@
-# 🌊 HubiWave
+
+<img width="643" height="390" alt="hubi" src="https://github.com/user-attachments/assets/9fc8e348-8188-45d4-bd70-428be030c188" />
+
+# 🌊 HubiWave – Self-Hosted SSH Orchestration Dashboard
 
 **HubiWave** is a self-hosted web interface to orchestrate SSH commands, remote scripts, and scheduled jobs across multiple Linux machines.
+
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
